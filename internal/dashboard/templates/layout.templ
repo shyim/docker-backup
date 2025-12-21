@@ -1,0 +1,90 @@
+package templates
+
+templ FlashAlert(flash *FlashMessage) {
+	if flash != nil {
+		if flash.Type == "success" {
+			<div class="mb-4 rounded-md bg-green-50 dark:bg-green-900/50 p-4" id="flash-message">
+				<div class="flex">
+					<div class="flex-shrink-0">
+						<svg class="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+							<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd"></path>
+						</svg>
+					</div>
+					<div class="ml-3">
+						<p class="text-sm font-medium text-green-800 dark:text-green-200">{ flash.Message }</p>
+					</div>
+					<div class="ml-auto pl-3">
+						<div class="-mx-1.5 -my-1.5">
+							<button type="button" onclick="document.getElementById('flash-message').remove()" class="inline-flex rounded-md bg-green-50 dark:bg-green-900/50 p-1.5 text-green-500 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900 focus:outline-none focus:ring-2 focus:ring-green-600 focus:ring-offset-2 focus:ring-offset-green-50 dark:focus:ring-offset-gray-900">
+								<span class="sr-only">Dismiss</span>
+								<svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+									<path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z"></path>
+								</svg>
+							</button>
+						</div>
+					</div>
+				</div>
+			</div>
+		} else if flash.Type == "error" {
+			<div class="mb-4 rounded-md bg-red-50 dark:bg-red-900/50 p-4" id="flash-message">
+				<div class="flex">
+					<div class="flex-shrink-0">
+						<svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+							<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd"></path>
+						</svg>
+					</div>
+					<div class="ml-3">
+						<p class="text-sm font-medium text-red-800 dark:text-red-200">{ flash.Message }</p>
+					</div>
+					<div class="ml-auto pl-3">
+						<div class="-mx-1.5 -my-1.5">
+							<button type="button" onclick="document.getElementById('flash-message').remove()" class="inline-flex rounded-md bg-red-50 dark:bg-red-900/50 p-1.5 text-red-500 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900 focus:outline-none focus:ring-2 focus:ring-red-600 focus:ring-offset-2 focus:ring-offset-red-50 dark:focus:ring-offset-gray-900">
+								<span class="sr-only">Dismiss</span>
+								<svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+									<path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z"></path>
+								</svg>
+							</button>
+						</div>
+					</div>
+				</div>
+			</div>
+		}
+	}
+}
+
+templ Layout(title string, currentPath string) {
+	<!DOCTYPE html>
+	<html lang="en">
+		<head>
+			<meta charset="UTF-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+			<title>{ title } - Docker Backup</title>
+			<link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32x32.png"/>
+			<link rel="icon" type="image/png" sizes="16x16" href="/static/favicon-16x16.png"/>
+			<link rel="apple-touch-icon" sizes="180x180" href="/static/apple-touch-icon.png"/>
+			<link rel="stylesheet" href="/static/app.css"/>
+		</head>
+		<body class="bg-gray-100 dark:bg-gray-900 min-h-screen">
+			<script src="/static/app.js" defer></script>
+			<header class="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
+				<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+					<div class="flex items-center justify-between h-16">
+						<div class="flex items-center">
+							<img src="/static/favicon-32x32.png" alt="Logo" class="h-8 w-8 mr-2"/>
+							<span class="text-xl font-bold text-gray-900 dark:text-white">Docker Backup</span>
+						</div>
+						<a href="https://shyim.github.io/docker-backup/" target="_blank" rel="noopener noreferrer" class="inline-flex items-center text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">
+							<svg class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
+							</svg>
+							Documentation
+						</a>
+					</div>
+				</div>
+			</header>
+			<main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+				{ children... }
+			</main>
+		</body>
+	</html>
+}

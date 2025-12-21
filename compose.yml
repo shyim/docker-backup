@@ -1,0 +1,50 @@
+services:
+  docker-backup:
+    build: .
+    restart: unless-stopped
+    develop:
+      watch:
+        - action: rebuild
+          path: .
+    command:
+      - daemon
+      - --dashboard=:8080
+      - --storage=local-backups.type=local
+      - --storage=local-backups.path=/backups
+      - --default-storage=local-backups
+      - --log-level=info
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - backup-data:/backups
+    networks:
+      - backup-network
+    ports:
+      - "8080:8080"
+
+  # Example PostgreSQL container with backup labels
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: myuser
+      POSTGRES_PASSWORD: mypassword
+      POSTGRES_DB: myapp
+    labels:
+      - docker-backup.enable=true
+      - docker-backup.db.type=postgres
+      - docker-backup.db.schedule=0 3 * * *
+      - docker-backup.db.retention=7
+      - docker-backup.data.type=volume
+      - docker-backup.data.schedule=0 4 * * *
+      - docker-backup.data.retention=14
+    networks:
+      - backup-network
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+networks:
+  backup-network:
+    driver: bridge
+
+volumes:
+  backup-data:
+  postgres-data:

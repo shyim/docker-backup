@@ -1,0 +1,11 @@
+{
+  "name": "docker-backup-dashboard",
+  "private": true,
+  "scripts": {
+    "build:css": "tailwindcss -i ./internal/dashboard/static/src/input.css -o ./internal/dashboard/static/app.css --minify",
+    "watch:css": "tailwindcss -i ./internal/dashboard/static/src/input.css -o ./internal/dashboard/static/app.css --watch"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.0"
+  }
+}
