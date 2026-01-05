@@ -31,8 +31,8 @@ COPY . .
 COPY --from=css-builder /build/internal/dashboard/static/app.css ./internal/dashboard/static/app.css
 
 # Build with cross-compilation support
-ARG TARGETOS=linux
-ARG TARGETARCH=amd64
+ARG TARGETOS
+ARG TARGETARCH
 RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -ldflags="-w -s" -o docker-backup ./cmd/docker-backup
 
 # Runtime stage
