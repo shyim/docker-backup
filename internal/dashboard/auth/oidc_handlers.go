@@ -32,6 +32,13 @@ func (a *OIDCAuth) handleLogin(c *gin.Context) {
 	}
 
 	session.Set(SessionKeyOIDCState, state)
+	session.Options(sessions.Options{
+		Path:     "/",
+		MaxAge:   300, // 5 minutes, enough for the OIDC flow
+		HttpOnly: true,
+		Secure:   a.secureCookies,
+		SameSite: http.SameSiteLaxMode,
+	})
 
 	var authURL string
 	if a.providerType == "github" {
@@ -153,9 +160,10 @@ func (a *OIDCAuth) handleCallback(c *gin.Context) {
 	session.Delete(SessionKeyOIDCState)
 	session.Delete(SessionKeyOIDCNonce)
 	session.Options(sessions.Options{
+		Path:     "/",
 		MaxAge:   86400 * 7, // 7 days
 		HttpOnly: true,
-		Secure:   c.Request.TLS != nil,
+		Secure:   a.secureCookies,
 		SameSite: http.SameSiteLaxMode,
 	})
 

@@ -2,6 +2,7 @@ package dashboard
 
 import (
 	"context"
+	"crypto/rand"
 	"fmt"
 	"io"
 	"log/slog"
@@ -59,7 +60,22 @@ func NewServer(addr string, backupMgr *backup.Manager, poolManager *storage.Pool
 	router.Use(gin.Recovery())
 
 	// Setup cookie-based sessions (needed for OIDC and flash messages)
-	store := cookie.NewStore([]byte("docker-backup-secret-key"))
+	var sessionKey []byte
+	if cfg.DashboardSessionSecret != "" {
+		sessionKey = []byte(cfg.DashboardSessionSecret)
+	} else {
+		sessionKey = make([]byte, 32)
+		if _, err := rand.Read(sessionKey); err != nil {
+			return nil
+		}
+		slog.Warn("no session secret configured, using random key (sessions won't survive restarts). Set DOCKER_BACKUP_SESSION_SECRET to fix this.")
+	}
+	store := cookie.NewStore(sessionKey)
+	store.Options(sessions.Options{
+		Path:     "/",
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+	})
 	router.Use(sessions.Sessions("docker_backup", store))
 
 	// Setup authentication - OIDC takes precedence over basic auth

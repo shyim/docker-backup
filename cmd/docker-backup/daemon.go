@@ -127,6 +127,8 @@ func runDaemon(cmd *cobra.Command, args []string) error {
 		}
 	}()
 
+	cfg.LoadSessionSecret()
+
 	var dashboardServer *dashboard.Server
 	if cfg.DashboardAddr != "" {
 		dashboardServer = dashboard.NewServer(cfg.DashboardAddr, backupMgr, poolManager, sched, notifyMgr, cfg)
