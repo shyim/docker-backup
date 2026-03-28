@@ -40,6 +40,7 @@ type OIDCAuth struct {
 	allowedUsers   map[string]bool
 	allowedDomains []string
 	providerType   string // "google", "github", "oidc"
+	secureCookies  bool
 }
 
 // NewOIDCAuth creates a new OIDC authenticator
@@ -48,6 +49,7 @@ func NewOIDCAuth(ctx context.Context, cfg OIDCConfig) (*OIDCAuth, error) {
 		providerType:   cfg.Provider,
 		allowedDomains: cfg.AllowedDomains,
 		allowedUsers:   make(map[string]bool),
+		secureCookies:  strings.HasPrefix(cfg.RedirectURL, "https://"),
 	}
 
 	// Build allowed users map

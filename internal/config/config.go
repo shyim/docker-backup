@@ -38,6 +38,9 @@ type Config struct {
 	DashboardAddr      string
 	DashboardBasicAuth string // htpasswd-style credentials (user:hash or file path)
 
+	// Dashboard session secret (read from DOCKER_BACKUP_SESSION_SECRET env var, random if unset)
+	DashboardSessionSecret string
+
 	// Dashboard OIDC settings
 	DashboardOIDCProvider       string
 	DashboardOIDCIssuerURL      string
@@ -68,6 +71,15 @@ func New() *Config {
 		LogFormat:    "text",
 		StoragePools: make(map[string]*StoragePool),
 		NotifyDSNs:   make(map[string]string),
+	}
+}
+
+// LoadSessionSecret loads the session secret from the environment variable
+// DOCKER_BACKUP_SESSION_SECRET. If not set, a random 32-byte key is generated.
+// A random key means sessions won't survive restarts.
+func (c *Config) LoadSessionSecret() {
+	if secret := os.Getenv(EnvPrefix + "SESSION_SECRET"); secret != "" {
+		c.DashboardSessionSecret = secret
 	}
 }
 
