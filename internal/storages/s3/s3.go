@@ -9,7 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
-	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
+	"github.com/aws/aws-sdk-go-v2/feature/s3/transfermanager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/shyim/docker-backup/internal/storage"
 )
@@ -79,7 +79,7 @@ func (t *S3StorageType) Create(poolName string, options map[string]string) (stor
 	}
 
 	client := s3.NewFromConfig(cfg, s3Opts...)
-	uploader := manager.NewUploader(client)
+	uploader := transfermanager.New(client)
 
 	return &S3Storage{
 		client:   client,
@@ -93,7 +93,7 @@ func (t *S3StorageType) Create(poolName string, options map[string]string) (stor
 // S3Storage implements Storage for S3-compatible backends
 type S3Storage struct {
 	client   *s3.Client
-	uploader *manager.Uploader
+	uploader *transfermanager.Client
 	bucket   string
 	prefix   string
 	poolName string
@@ -103,7 +103,7 @@ type S3Storage struct {
 func (s *S3Storage) Store(ctx context.Context, key string, reader io.Reader) error {
 	fullKey := s.fullKey(key)
 
-	_, err := s.uploader.Upload(ctx, &s3.PutObjectInput{
+	_, err := s.uploader.UploadObject(ctx, &transfermanager.UploadObjectInput{
 		Bucket:      aws.String(s.bucket),
 		Key:         aws.String(fullKey),
 		Body:        reader,
