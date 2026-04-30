@@ -41,6 +41,7 @@ npm run watch:css
   - `api/` - Unix socket API server for backup triggers
   - `backup/` - Backup type interface, registry, and orchestration manager
   - `backuptypes/` - Backup type implementations
+    - `clickhouse/` - ClickHouse backup using native BACKUP/RESTORE SQL (requires ClickHouse 22.8+)
     - `mysql/` - MySQL/MariaDB backup using mysqldump
     - `postgres/` - PostgreSQL backup using pg_dump
     - `volume/` - Volume backup for container mount points
@@ -282,6 +283,31 @@ Each named config requires a unique name (e.g., "db", "files") and supports:
 - `notify` - Override container-level notifications (optional)
 
 The `notify` label at container level applies to all backup configs unless overridden per-config. Notifications are opt-in - if not specified, no notifications will be sent.
+
+#### ClickHouse Example
+
+```yaml
+services:
+  clickhouse:
+    image: clickhouse/clickhouse-server:latest
+    environment:
+      CLICKHOUSE_USER: admin
+      CLICKHOUSE_PASSWORD: secret
+      CLICKHOUSE_DB: analytics
+    labels:
+      - docker-backup.enable=true
+      - docker-backup.db.type=clickhouse
+      - docker-backup.db.schedule=0 3 * * *
+      - docker-backup.db.retention=7
+      - docker-backup.db.storage=s3
+```
+
+**ClickHouse requirements:**
+- ClickHouse 22.8+ (for native `BACKUP`/`RESTORE` SQL support)
+- `clickhouse-client` must be available in the container (included in official images)
+- Supported env vars: `CLICKHOUSE_USER`, `CLICKHOUSE_PASSWORD`, `CLICKHOUSE_DB`
+- If no env vars are set, defaults to user `default` with empty password
+- If `CLICKHOUSE_DB` is not set, all user databases are backed up automatically
 
 ## CLI Commands
 

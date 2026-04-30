@@ -50,7 +50,7 @@ These labels define individual backup configurations. Replace `<name>` with your
 
 | Label | Required | Default | Description |
 |-------|----------|---------|-------------|
-| `docker-backup.<name>.type` | Yes | - | Backup type (e.g., `postgres`, `mysql`) |
+| `docker-backup.<name>.type` | Yes | - | Backup type (`clickhouse`, `postgres`, `mysql`, `volume`) |
 | `docker-backup.<name>.schedule` | Yes | - | Cron expression for scheduling |
 | `docker-backup.<name>.retention` | No | `7` | Number of backups to keep |
 | `docker-backup.<name>.storage` | No | Default pool | Storage pool name |
