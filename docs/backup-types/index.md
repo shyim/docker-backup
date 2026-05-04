@@ -10,6 +10,7 @@ docker-backup supports multiple backup types, each designed for specific applica
 
 | Type | Description | Output |
 |------|-------------|--------|
+| `clickhouse` | ClickHouse database backup (22.8+) | `.tar.zst` |
 | `postgres` | PostgreSQL database backup | `.tar.zst` |
 | `mysql` | MySQL/MariaDB database backup | `.tar.zst` |
 | `volume` | Docker volume backup | `.tar.zst` |
@@ -29,6 +30,7 @@ Select the backup type that matches your application:
 
 | Application | Backup Type |
 |-------------|-------------|
+| ClickHouse | `clickhouse` |
 | PostgreSQL | `postgres` |
 | MySQL | `mysql` |
 | MariaDB | `mysql` |
@@ -37,6 +39,14 @@ Select the backup type that matches your application:
 ## Backup Type Reference
 
 <div class="grid cards" markdown>
+
+-   :simple-clickhouse: **ClickHouse**
+
+    ---
+
+    Backup ClickHouse databases using native `BACKUP`/`RESTORE` SQL
+
+    [:octicons-arrow-right-24: ClickHouse](clickhouse.md)
 
 -   :simple-postgresql: **PostgreSQL**
 

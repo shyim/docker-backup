@@ -4,6 +4,7 @@ package backuptypes
 
 import (
 	// Import all backup types for self-registration
+	_ "github.com/shyim/docker-backup/internal/backuptypes/clickhouse"
 	_ "github.com/shyim/docker-backup/internal/backuptypes/mysql"
 	_ "github.com/shyim/docker-backup/internal/backuptypes/postgres"
 	_ "github.com/shyim/docker-backup/internal/backuptypes/volume"

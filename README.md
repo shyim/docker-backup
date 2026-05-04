@@ -93,6 +93,7 @@ labels:
 
 | Type | Description |
 |------|-------------|
+| `clickhouse` | ClickHouse database backup using native `BACKUP`/`RESTORE` SQL (requires ClickHouse 22.8+) |
 | `postgres` | PostgreSQL database backup using `pg_dump` |
 | `mysql` | MySQL/MariaDB database backup using `mysqldump` |
 | `volume` | Backup all mounted volumes as compressed tarball |
