@@ -326,6 +326,20 @@ func (c *Client) GetContainersUsingVolume(ctx context.Context, volumeName string
 	return result, nil
 }
 
+// CopyFromContainer streams the contents of srcPath inside the container as a tar archive
+func (c *Client) CopyFromContainer(ctx context.Context, containerID, srcPath string) (io.ReadCloser, error) {
+	reader, _, err := c.cli.CopyFromContainer(ctx, containerID, srcPath)
+	if err != nil {
+		return nil, err
+	}
+	return reader, nil
+}
+
+// CopyToContainer extracts the given tar stream into dstPath inside the container
+func (c *Client) CopyToContainer(ctx context.Context, containerID, dstPath string, content io.Reader) error {
+	return c.cli.CopyToContainer(ctx, containerID, dstPath, content, container.CopyToContainerOptions{})
+}
+
 // StopContainer stops a container with the given timeout
 func (c *Client) StopContainer(ctx context.Context, containerID string, timeout time.Duration) error {
 	timeoutSeconds := int(timeout.Seconds())

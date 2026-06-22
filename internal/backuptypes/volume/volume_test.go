@@ -1,36 +1,22 @@
 package volume
 
 import (
+	"archive/tar"
 	"bytes"
 	"context"
 	"fmt"
 	"io"
-	"os"
 	"path/filepath"
-	"runtime"
 	"testing"
 	"time"
 
+	"github.com/klauspost/compress/zstd"
 	"github.com/shyim/docker-backup/internal/docker"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 )
-
-// skipIfVolumesNotAccessible checks if Docker volume paths are directly accessible
-// from the host. This is typically only true on Linux where Docker runs natively.
-// On macOS/Windows with Docker Desktop or OrbStack, volumes are inside a VM.
-func skipIfVolumesNotAccessible(t *testing.T) {
-	t.Helper()
-	if runtime.GOOS != "linux" {
-		t.Skip("skipping: Docker volume paths are not directly accessible on " + runtime.GOOS)
-	}
-	// Also verify we can actually access /var/lib/docker/volumes
-	if _, err := os.Stat("/var/lib/docker/volumes"); os.IsNotExist(err) {
-		t.Skip("skipping: /var/lib/docker/volumes is not accessible (Docker may be running in a VM)")
-	}
-}
 
 func TestVolumeBackup_Name(t *testing.T) {
 	v := &VolumeBackup{}
@@ -115,36 +101,12 @@ func TestVolumeBackup_Validate(t *testing.T) {
 	}
 }
 
-func TestIsSubPath(t *testing.T) {
-	tests := []struct {
-		parent   string
-		child    string
-		expected bool
-	}{
-		{"/data", "/data/file.txt", true},
-		{"/data", "/data/subdir/file.txt", true},
-		{"/data", "/data", true},
-		{"/data", "/data2/file.txt", false},
-		{"/data", "/other/file.txt", false},
-		{"/data", "/dat", false},
-		{"/data/vol", "/data/vol/../other", false},
-	}
-
-	for _, tt := range tests {
-		t.Run(fmt.Sprintf("%s_%s", tt.parent, tt.child), func(t *testing.T) {
-			result := isSubPath(tt.parent, tt.child)
-			assert.Equal(t, tt.expected, result)
-		})
-	}
-}
-
 // TestVolumeBackup_Integration tests the full backup and restore cycle
 // using a real container with a named volume via testcontainers.
 func TestVolumeBackup_Integration(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")
 	}
-	skipIfVolumesNotAccessible(t)
 
 	ctx := context.Background()
 
@@ -188,10 +150,6 @@ func TestVolumeBackup_Integration(t *testing.T) {
 	// Verify volume mount exists
 	require.Len(t, containerInfo.Mounts, 1)
 	require.Equal(t, "volume", containerInfo.Mounts[0].Type)
-
-	// Get volume path for direct file manipulation
-	volumePath := containerInfo.Mounts[0].Source
-	require.NotEmpty(t, volumePath)
 
 	// Create test files in the volume using exec in container
 	_, _, err = container.Exec(ctx, []string{"sh", "-c", "echo 'Hello World' > /data/test.txt"})
@@ -276,7 +234,6 @@ func TestVolumeBackup_MultipleVolumes(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")
 	}
-	skipIfVolumesNotAccessible(t)
 
 	ctx := context.Background()
 
@@ -378,7 +335,6 @@ func TestVolumeBackup_LargeFiles(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")
 	}
-	skipIfVolumesNotAccessible(t)
 
 	ctx := context.Background()
 
@@ -461,7 +417,6 @@ func TestVolumeBackup_SpecialFilenames(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")
 	}
-	skipIfVolumesNotAccessible(t)
 
 	ctx := context.Background()
 
@@ -545,7 +500,6 @@ func TestVolumeBackup_Symlinks(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")
 	}
-	skipIfVolumesNotAccessible(t)
 
 	ctx := context.Background()
 
@@ -636,7 +590,6 @@ func TestVolumeBackup_EmptyVolume(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")
 	}
-	skipIfVolumesNotAccessible(t)
 
 	ctx := context.Background()
 
@@ -691,7 +644,6 @@ func TestVolumeBackup_DeepDirectoryStructure(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")
 	}
-	skipIfVolumesNotAccessible(t)
 
 	ctx := context.Background()
 
@@ -758,6 +710,91 @@ func TestVolumeBackup_DeepDirectoryStructure(t *testing.T) {
 	output, err := readExecOutput(reader)
 	require.NoError(t, err)
 	assert.Contains(t, output, "deep content")
+}
+
+// TestVolumeBackup_ArchiveContainsFiles is a regression test for issue #16:
+// volume backups produced empty 16-byte archives when reads went through the
+// host filesystem. It asserts the archive contains the actual files, re-rooted
+// under the volume name.
+func TestVolumeBackup_ArchiveContainsFiles(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+
+	ctx := context.Background()
+
+	volumeName := fmt.Sprintf("test-volume-archive-%d", time.Now().UnixNano())
+
+	req := testcontainers.ContainerRequest{
+		Image: "alpine:latest",
+		Cmd:   []string{"sleep", "3600"},
+		Mounts: testcontainers.ContainerMounts{
+			testcontainers.VolumeMount(volumeName, "/data"),
+		},
+		WaitingFor: wait.ForExec([]string{"true"}).WithStartupTimeout(30 * time.Second),
+	}
+
+	container, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+		ContainerRequest: req,
+		Started:          true,
+	})
+	require.NoError(t, err)
+	defer func() {
+		if err := container.Terminate(ctx); err != nil {
+			t.Logf("failed to terminate container: %v", err)
+		}
+	}()
+
+	dockerClient, err := docker.NewClient("")
+	require.NoError(t, err)
+	defer func() {
+		_ = dockerClient.Close()
+	}()
+
+	containerInfo, err := dockerClient.GetContainer(ctx, container.GetContainerID())
+	require.NoError(t, err)
+
+	_, _, err = container.Exec(ctx, []string{"sh", "-c", "echo 'hello' > /data/file.txt"})
+	require.NoError(t, err)
+	_, _, err = container.Exec(ctx, []string{"mkdir", "-p", "/data/sub"})
+	require.NoError(t, err)
+	_, _, err = container.Exec(ctx, []string{"sh", "-c", "echo 'nested' > /data/sub/nested.txt"})
+	require.NoError(t, err)
+
+	v := &VolumeBackup{}
+	var backupBuffer bytes.Buffer
+	err = v.Backup(ctx, containerInfo, dockerClient, &backupBuffer)
+	require.NoError(t, err)
+
+	require.Greater(t, backupBuffer.Len(), 16, "backup must not be an empty archive (issue #16)")
+
+	names := make(map[string]string)
+	zr, err := zstd.NewReader(bytes.NewReader(backupBuffer.Bytes()))
+	require.NoError(t, err)
+	defer zr.Close()
+
+	tr := tar.NewReader(zr)
+	for {
+		header, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		require.NoError(t, err)
+		if header.Typeflag == tar.TypeReg {
+			content, err := io.ReadAll(tr)
+			require.NoError(t, err)
+			names[header.Name] = string(content)
+		}
+	}
+
+	require.NotEmpty(t, names, "archive must contain file entries")
+
+	expectedTop := volumeName + "/file.txt"
+	expectedNested := volumeName + "/sub/nested.txt"
+	require.Contains(t, names, expectedTop, "archive should contain top-level file under the volume name")
+	require.Contains(t, names, expectedNested, "archive should contain nested file under the volume name")
+	assert.Contains(t, names[expectedTop], "hello")
+	assert.Contains(t, names[expectedNested], "nested")
 }
 
 // Helper function to read exec output from testcontainers
