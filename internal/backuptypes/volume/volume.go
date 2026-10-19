@@ -341,11 +341,11 @@ func newVolumeRestoreStream(ctx context.Context, dockerClient *docker.Client, co
 func (s *volumeRestoreStream) close() error {
 	if err := s.writer.Close(); err != nil {
 		_ = s.pw.CloseWithError(err)
-		<-s.done
+		<-s.done //nolint:errcheck // Wait for the copy to finish; preserve the tar writer error.
 		return err
 	}
 	if err := s.pw.Close(); err != nil {
-		<-s.done
+		<-s.done //nolint:errcheck // Wait for the copy to finish; preserve the pipe close error.
 		return err
 	}
 	return <-s.done
