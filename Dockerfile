@@ -13,7 +13,7 @@ COPY internal/dashboard/templates ./internal/dashboard/templates
 RUN npm run build:css
 
 # Go build stage
-FROM --platform=$BUILDPLATFORM golang:1.25-alpine AS builder
+FROM --platform=$BUILDPLATFORM golang:1.27-alpine AS builder
 
 WORKDIR /build
 
