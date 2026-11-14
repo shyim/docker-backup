@@ -116,7 +116,7 @@ func (m *Manager) syncContainers(ctx context.Context) error {
 		m.mu.RUnlock()
 
 		if exists {
-			if configsEqual(existingCfg.Backups, cfg.Backups) {
+			if existingCfg.Folder == cfg.Folder && configsEqual(existingCfg.Backups, cfg.Backups) {
 				continue
 			}
 		}
@@ -358,7 +358,7 @@ func (m *Manager) runBackup(ctx context.Context, containerID string, cfg *config
 		return
 	}
 
-	key := m.generateBackupKey(cfg.ContainerName, backup.Name, backupType.FileExtension(), time.Now())
+	key := m.generateBackupKey(strings.TrimSuffix(cfg.BackupPrefix(), "/"), backup.Name, backupType.FileExtension(), time.Now())
 
 	var buf bytes.Buffer
 
@@ -414,7 +414,7 @@ func (m *Manager) runBackup(ctx context.Context, containerID string, cfg *config
 		Timestamp:     time.Now(),
 	}, notifyProviders)
 
-	prefix := fmt.Sprintf("%s/%s/", cfg.ContainerName, backup.Name)
+	prefix := cfg.BackupPrefix() + backup.Name + "/"
 	deleted, err := m.retention.Enforce(ctx, backup.Storage, prefix, backup.Retention)
 	if err != nil {
 		slog.Warn("retention enforcement failed",
@@ -441,7 +441,7 @@ func (m *Manager) notify(_ context.Context, event notification.Event, providers 
 }
 
 // generateBackupKey creates a unique key for the backup file
-// Format: container-name/config-name/YYYY-MM-DD/HHMMSS<extension>
+// Format: [folder/]container-name/config-name/YYYY-MM-DD/HHMMSS<extension>
 func (m *Manager) generateBackupKey(containerName, path string, extension string, t time.Time) string {
 	return fmt.Sprintf("%s/%s/%s/%s%s",
 		containerName,
@@ -496,7 +496,7 @@ func (m *Manager) findBackupConfig(cfg *config.ContainerConfig, configName strin
 
 // getStorageFromBackupKey extracts config name from backup key and returns storage pool
 func (m *Manager) getStorageForBackupKey(cfg *config.ContainerConfig, backupKey string) (storage.Storage, error) {
-	// Extract config name from key: container-name/config-name/date/time.ext
+	// Extract config name from key: [folder/]container-name/config-name/date/time.ext
 	parts := strings.Split(backupKey, "/")
 	if len(parts) < 2 {
 		// Fall back to first backup config's storage
@@ -506,7 +506,10 @@ func (m *Manager) getStorageForBackupKey(cfg *config.ContainerConfig, backupKey 
 		return nil, fmt.Errorf("invalid backup key format")
 	}
 
-	configPath := parts[1] // This is either config name or backup type
+	configPath := parts[1] // Legacy keys without a date/time suffix
+	if len(parts) >= 4 {
+		configPath = parts[len(parts)-3]
+	}
 
 	// Find matching backup config
 	for _, backup := range cfg.Backups {
@@ -551,7 +554,7 @@ func (m *Manager) ListBackups(ctx context.Context, containerName string) ([]stor
 			continue
 		}
 
-		prefix := fmt.Sprintf("%s/", containerName)
+		prefix := cfg.BackupPrefix()
 		backups, err := store.List(ctx, prefix)
 		if err != nil {
 			slog.Warn("failed to list backups", "pool", storagePool, "error", err)
@@ -592,6 +595,9 @@ func (m *Manager) RestoreBackup(ctx context.Context, containerName, backupKey st
 		return fmt.Errorf("invalid backup key format")
 	}
 	configPath := parts[1]
+	if len(parts) >= 4 {
+		configPath = parts[len(parts)-3]
+	}
 
 	var backupCfg *config.BackupConfig
 	for i := range cfg.Backups {
