@@ -315,9 +315,12 @@ func (s *Server) handleBackups(c *gin.Context) {
 }
 
 // extractConfigName extracts the config name from a backup key
-// Key format: container-name/config-name/YYYY-MM-DD/HHMMSS.ext
+// Key format: [folder/]container-name/config-name/YYYY-MM-DD/HHMMSS.ext
 func extractConfigName(key string) string {
 	parts := strings.Split(key, "/")
+	if len(parts) >= 4 {
+		return parts[len(parts)-3]
+	}
 	if len(parts) >= 2 {
 		return parts[1]
 	}

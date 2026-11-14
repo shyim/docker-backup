@@ -22,6 +22,7 @@ type ContainerConfig struct {
 	ContainerID   string
 	ContainerName string
 	Enabled       bool
+	Folder        string         // Optional parent folder shared by a stack
 	Notify        []string       // Shared notification providers (container-level)
 	Backups       []BackupConfig // One or more backup configurations
 }
@@ -32,6 +33,7 @@ const LabelPrefix = "docker-backup"
 // Label suffixes (appended to LabelPrefix)
 const (
 	LabelEnable    = "enable"
+	LabelFolder    = "folder"
 	LabelType      = "type"
 	LabelSchedule  = "schedule"
 	LabelRetention = "retention"
@@ -68,6 +70,11 @@ func ParseLabels(prefix, containerID, containerName string, labels map[string]st
 
 	if !cfg.Enabled {
 		return cfg, nil
+	}
+
+	cfg.Folder = strings.TrimSpace(labels[prefix+"."+LabelFolder])
+	if cfg.Folder == "." || cfg.Folder == ".." || strings.ContainsAny(cfg.Folder, "/\\\x00") {
+		return nil, fmt.Errorf("invalid value for %s.%s: must be a single folder name", prefix, LabelFolder)
 	}
 
 	cfg.Notify = parseNotifyValue(labels[prefix+"."+LabelNotify])
@@ -201,4 +208,12 @@ func parseNotifyValue(val string) []string {
 		}
 	}
 	return providers
+}
+
+// BackupPrefix returns the storage prefix for this container, including its optional folder.
+func (c *ContainerConfig) BackupPrefix() string {
+	if c.Folder != "" {
+		return c.Folder + "/" + c.ContainerName + "/"
+	}
+	return c.ContainerName + "/"
 }

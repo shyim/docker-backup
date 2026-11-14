@@ -271,3 +271,37 @@ func TestParseLabels_ContainerInfo(t *testing.T) {
 	assert.Equal(t, "abc123def456", cfg.ContainerID)
 	assert.Equal(t, "my-postgres-container", cfg.ContainerName)
 }
+
+func TestParseLabelsFolder(t *testing.T) {
+	for _, tt := range []struct {
+		value   string
+		want    string
+		invalid bool
+	}{
+		{"", "", false},
+		{"sw6", "sw6", false},
+		{" sw6-2 ", "sw6-2", false},
+		{".", "", true},
+		{"..", "", true},
+		{"../outside", "", true},
+		{"/absolute", "", true},
+		{"nested/folder", "", true},
+		{`nested\folder`, "", true},
+		{"bad\x00folder", "", true},
+	} {
+		t.Run(tt.value, func(t *testing.T) {
+			cfg, err := ParseLabels("custom", "id", "db", map[string]string{
+				"custom.enable":      "true",
+				"custom.folder":      tt.value,
+				"custom.db.type":     "mysql",
+				"custom.db.schedule": "0 3 * * *",
+			})
+			if tt.invalid {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, cfg.Folder)
+		})
+	}
+}

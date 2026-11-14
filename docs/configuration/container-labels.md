@@ -42,6 +42,7 @@ These labels apply to the entire container:
 | Label | Required | Description |
 |-------|----------|-------------|
 | `docker-backup.enable` | Yes | Set to `true` to enable backup discovery |
+| `docker-backup.folder` | No | Optional parent folder for grouping a stack's backups |
 | `docker-backup.notify` | No | Comma-separated list of notification providers |
 
 ### Backup Config Labels
@@ -128,6 +129,29 @@ labels:
   - docker-backup.db.schedule=0 3 * * *
   - docker-backup.db.storage=s3-offsite
 ```
+
+## Grouping Backups by Stack
+
+Grouping is opt-in. Add the same `docker-backup.folder` label to each container in a stack:
+
+```yaml
+labels:
+  - docker-backup.enable=true
+  - docker-backup.folder=sw6
+  - docker-backup.db.type=mysql
+  - docker-backup.db.schedule=0 3 * * *
+```
+
+For a container named `sw6-sql`, this stores backups under
+`sw6/sw6-sql/db/YYYY-MM-DD/HHMMSS.tar.zst` in local storage or S3.
+Without the label (or with an empty value), the existing
+`sw6-sql/db/YYYY-MM-DD/HHMMSS.tar.zst` layout is unchanged.
+The folder must be a single name, without slashes, and cannot be `.` or `..`.
+
+Changing the folder does not move existing backups. Listing and retention use the
+currently configured folder; move existing backups to the new layout if you want
+them included. Existing backup keys can still be used directly for restore,
+download, or deletion.
 
 ## Notifications
 
